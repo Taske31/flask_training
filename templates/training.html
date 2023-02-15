@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>{{training}}</h2>
+    {% if training == 'Научные симуляторы' %}
+        <img src="../static/images/ship-blueprint-science.jpg" alt="Не удалось загрузить картинку">
+    {% elif training == 'Инженерные тренажеры' %}
+        <img src="../static/images/ship-blueprint-engeneer.jpg" alt="Не удалось загрузить картинку">
+    {% elif training == 'Летательный симулятор' %}
+        <img src="../static/images/ship-blueprint-pilot.jpg" alt="Не удалось загрузить картинку">
+    {% elif training == 'Научная лаборотория' %}
+        <img src="../static/images/ship-blueprint-labarotory.jpg" alt="Не удалось загрузить картинку">
+    {% endif %}
+
+{% endblock %}
