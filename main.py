@@ -1,66 +1,112 @@
 from flask import Flask
 from data import db_session
 from data.users import User
-from data.jobs import Jobs
+from data.news import News
+from flask import render_template
+from forms.user import RegisterForm
+from flask import redirect
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from forms.user import LoginForm
 import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'yandexlyceum_secret_key'
 
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    db_sess = db_session.create_session()
+    return db_sess.query(User).get(user_id)
+
+
+@app.route("/")
+def index():
+    db_sess = db_session.create_session()
+    if current_user.is_authenticated:
+        news = db_sess.query(News).filter(
+            (News.user == current_user) | (News.is_private != False))
+    else:
+        news = db_sess.query(News).filter(News.is_private != False)
+    return render_template("index.html", news=news)
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def reqister():
+    form = RegisterForm()
+    if form.validate_on_submit():
+        if form.password.data != form.password_again.data:
+            return render_template('register.html', title='Регистрация',
+                                   form=form,
+                                   message="Пароли не совпадают")
+        db_sess = db_session.create_session()
+        if db_sess.query(User).filter(User.email == form.email.data).first():
+            return render_template('register.html', title='Регистрация',
+                                   form=form,
+                                   message="Такой пользователь уже есть")
+        user = User(
+            name=form.name.data,
+            email=form.email.data,
+            about=form.about.data
+        )
+        user.set_password(form.password.data)
+        db_sess.add(user)
+        db_sess.commit()
+        return redirect('/login')
+    return render_template('register.html', title='Регистрация', form=form)
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        db_sess = db_session.create_session()
+        user = db_sess.query(User).filter(User.email == form.email.data).first()
+        if user and user.check_password(form.password.data):
+            login_user(user, remember=form.remember_me.data)
+            return redirect("/")
+        return render_template('login.html',
+                               message="Неправильный логин или пароль",
+                               form=form)
+    return render_template('login.html', title='Авторизация', form=form)
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect("/")
+
 
 def main():
     db_session.global_init("db/blogs.db")
-    # app.run()
-    db_sess = db_session.create_session()
-    user = User()
-    user.surname = "Scott"
-    user.name = "Ridley"
-    user.age = 21
-    user.position = "captain"
-    user.speciality = "research engineer"
-    user.address = "module_1"
-    user.email = "scott_chief@mars.org"
-    db_sess.add(user)
+    app.run()
 
-    user = User()
-    user.surname = "Daniel"
-    user.name = "Karikh"
-    user.age = 17
-    user.position = "main engeneer"
-    user.speciality = "engineer"
-    user.address = "module_3"
-    user.email = "sasdadasdasdsad@mars.org"
-    db_sess.add(user)
+    # user = User()
+    # user.name = "Пользователь 1"
+    # user.about = "биография пользователя 1"
+    # user.email = "email@email.ru"
+    # db_sess = db_session.create_session()
+    # db_sess.add(user)
 
-    user = User()
-    user.surname = "Michael"
-    user.name = "Trotsky"
-    user.age = 45
-    user.position = "cook"
-    user.speciality = "main cook"
-    user.address = "module_2"
-    user.email = "cook_mars@mars.org"
-    db_sess.add(user)
 
-    user = User()
-    user.surname = "Pluto"
-    user.name = "Rigulas"
-    user.age = 41
-    user.position = "doctor"
-    user.speciality = "main engineer"
-    user.address = "module_4"
-    user.email = "h2o@mars.org"
-    db_sess.add(user)
-
-    job = Jobs()
-    job.team_leader = 1
-    job.job = 'deployment of residential modules 1 and 2'
-    job.work_size = 15
-    job.collaborators = '2, 3'
-    job.start_date = datetime.datetime.now()
-    job.is_finished = False
-    db_sess.add(job)
-    db_sess.commit()
+#
+# news = News()
+# news.title = 'Первая запись'
+# news.content = 'Привет блог!'
+# news.created_date = datetime.datetime.now()
+# news.user_id = 1
+# db_sess.add(news)
+#
+# news = News()
+# news.title = 'Вторая запись'
+# news.content = 'Уже вторая запись'
+# news.created_date = datetime.datetime.now()
+# news.user_id = 1
+# db_sess.add(news)
+# db_sess.commit()
 
 
 if __name__ == '__main__':
