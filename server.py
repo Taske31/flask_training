@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify, make_response
 from data import db_session
 from data.users import User
 from data.news import News
@@ -8,6 +8,7 @@ from flask import redirect, abort
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from forms.user import LoginForm
 from forms.news import NewsForm
+from data import news_api
 import os
 import datetime
 
@@ -82,7 +83,7 @@ def logout():
     return redirect("/")
 
 
-@app.route('/news',  methods=['GET', 'POST'])
+@app.route('/news', methods=['GET', 'POST'])
 @login_required
 def add_news():
     form = NewsForm()
@@ -149,35 +150,22 @@ def news_delete(id):
     return redirect('/')
 
 
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'Not found'}), 404)
+
+
+@app.errorhandler(400)
+def bad_request(_):
+    return make_response(jsonify({'error': 'Bad Request'}), 400)
+
+
+
 def main():
     db_session.global_init("db/blogs.db")
+    app.register_blueprint(news_api.blueprint)
     app.run()
-
-    # user = User()
-    # user.name = "Пользователь 1"
-    # user.about = "биография пользователя 1"
-    # user.email = "email@email.ru"
-    # db_sess = db_session.create_session()
-    # db_sess.add(user)
-
-
-#
-# news = News()
-# news.title = 'Первая запись'
-# news.content = 'Привет блог!'
-# news.created_date = datetime.datetime.now()
-# news.user_id = 1
-# db_sess.add(news)
-#
-# news = News()
-# news.title = 'Вторая запись'
-# news.content = 'Уже вторая запись'
-# news.created_date = datetime.datetime.now()
-# news.user_id = 1
-# db_sess.add(news)
-# db_sess.commit()
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    main()
