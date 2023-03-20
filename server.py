@@ -1,5 +1,5 @@
-from flask import Flask, request, jsonify, make_response
-from data import db_session
+from flask import Flask, request
+from data import db_session, news_resources, news_api
 from data.users import User
 from data.news import News
 from flask import render_template
@@ -8,12 +8,12 @@ from flask import redirect, abort
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from forms.user import LoginForm
 from forms.news import NewsForm
-from data import news_api
 import os
+from flask_restful import reqparse, abort, Api, Resource
 import datetime
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'yandexlyceum_secret_key'
+api = Api(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -83,7 +83,7 @@ def logout():
     return redirect("/")
 
 
-@app.route('/news', methods=['GET', 'POST'])
+@app.route('/news',  methods=['GET', 'POST'])
 @login_required
 def add_news():
     form = NewsForm()
@@ -150,20 +150,14 @@ def news_delete(id):
     return redirect('/')
 
 
-@app.errorhandler(404)
-def not_found(error):
-    return make_response(jsonify({'error': 'Not found'}), 404)
-
-
-@app.errorhandler(400)
-def bad_request(_):
-    return make_response(jsonify({'error': 'Bad Request'}), 400)
-
-
-
 def main():
     db_session.global_init("db/blogs.db")
     app.register_blueprint(news_api.blueprint)
+    # для списка объектов
+    api.add_resource(news_resources.NewsListResource, '/api/v2/news')
+
+    # для одного объекта
+    api.add_resource(news_resources.NewsResource, '/api/v2/news/<int:news_id>')
     app.run()
 
 
